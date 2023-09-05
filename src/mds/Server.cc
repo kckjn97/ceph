@@ -554,6 +554,7 @@ void Server::handle_client_session(const cref_t<MClientSession> &m)
   version_t pv;
   Session *session = mds->get_session(m);
 
+//  dout(0) << "eunjae handle_client_session: " << *m << " from " << m->get_source() << dendl;
   dout(3) << "handle_client_session " << *m << " from " << m->get_source() << dendl;
   ceph_assert(m->is_a_client()); // should _not_ come from an mds!
 
@@ -2430,6 +2431,7 @@ void Server::set_trace_dist(const ref_t<MClientReply> &reply,
 
 void Server::handle_client_request(const cref_t<MClientRequest> &req)
 {
+//  dout(0) << "eunjae handle_client_request: " << *req << dendl;
   dout(4) << "handle_client_request " << *req << dendl;
 
   if (mds->logger)
@@ -2612,6 +2614,46 @@ void Server::dispatch_client_request(MDRequestRef& mdr)
   // we shouldn't be waiting on anyone.
   ceph_assert(!mdr->has_more() || mdr->more()->waiting_on_peer.empty());
 
+  const filepath& refpath = mdr->get_filepath();
+  inodeno_t ino = refpath.get_ino();
+  client_t client = mdr->get_client();
+
+  tmp_wcc = ino;
+  dout(0) << "eunjae dispatch_client_request:" << *mdr  << dendl;
+  dout(0) << "refpath:" << refpath  << dendl;
+  dout(0) << "ino:" << ino  << dendl;
+  dout(0) << "client:" << client  << dendl;
+
+  Session* session = mdr->session;
+  dout(0) << "session:" << session << dendl;
+
+  const auto& metadata = session->info.client_metadata;
+
+  dout(0) << "client map:" << dendl;
+  for (auto it = metadata.begin(); it != metadata.end(); it++ ) {
+    dout(0) << "-" << it->first << " : " << it->second << dendl;
+  }
+
+  auto metadata_it = metadata.find("root");
+  if(metadata_it != metadata.end()) {
+    auto root = metadata_it->second;
+    dout(0) << "root: " << root << dendl;
+
+    auto wss_bf_map_it = wss_bf_map.find(root);
+    if(wss_bf_map_it == wss_bf_map.end()){
+      wss_map[root] = 0;
+      auto bf = new BloomFilter();
+      bf->add(ino);
+      wss_bf_map[root] = bf;
+    }else {
+      if(wss_map.find(root) != wss_map.end())
+        wss_map[root] += 1;
+      auto bf = wss_bf_map_it->second;
+      bf->add(ino);
+    }
+  }
+  metrics_handler->set_wss_map(&wss_map);
+
   if (mdr->killed) {
     dout(10) << "request " << *mdr << " was killed" << dendl;
     //if the mdr is a "batch_op" and it has followers, pick a follower as
@@ -2638,6 +2680,7 @@ void Server::dispatch_client_request(MDRequestRef& mdr)
 
   if (logger) logger->inc(l_mdss_dispatch_client_request);
 
+  dout(0) << "eunjae dispatch_client_request:" << *req  << dendl;
   dout(7) << "dispatch_client_request " << *req << dendl;
 
   if (req->may_write() && mdcache->is_readonly()) {

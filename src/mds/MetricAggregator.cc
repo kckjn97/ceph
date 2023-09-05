@@ -78,6 +78,7 @@ void MetricAggregator::ms_fast_dispatch2(const ref_t<Message> &m) {
 }
 
 bool MetricAggregator::ms_dispatch2(const ref_t<Message> &m) {
+  dout(0) << "eunjae ms_dispatch2" << dendl;
   if (m->get_type() == MSG_MDS_METRICS &&
       m->get_connection()->get_peer_type() == CEPH_ENTITY_TYPE_MDS) {
     const Message *msg = m.get();
@@ -93,6 +94,8 @@ bool MetricAggregator::ms_dispatch2(const ref_t<Message> &m) {
 
 void MetricAggregator::refresh_metrics_for_rank(const entity_inst_t &client,
                                                 mds_rank_t rank, const Metrics &metrics) {
+  dout(0) << "eunjae refresh_metrics_for_rank : client=" << client << ", rank=" << rank << ", metrics="
+           << metrics << dendl;
   dout(20) << ": client=" << client << ", rank=" << rank << ", metrics="
            << metrics << dendl;
 
@@ -109,6 +112,7 @@ void MetricAggregator::refresh_metrics_for_rank(const entity_inst_t &client,
 
     dout(20) << ": performance_counter_descriptor=" << d << dendl;
 
+    dout(0) << "eunjae performance_counter_descriptor=" << d << dendl;
     switch (d.type) {
     case MDSPerformanceCounterType::CAP_HIT_METRIC:
       c->first = metrics.cap_hit_metric.hits;
@@ -202,6 +206,12 @@ void MetricAggregator::refresh_metrics_for_rank(const entity_inst_t &client,
       if (metrics.metadata_latency_metric.updated) {
         c->first = metrics.metadata_latency_metric.sq_sum;
         c->second = metrics.metadata_latency_metric.count;
+      }
+      break;
+    case MDSPerformanceCounterType::WSS_METRIC:
+      if (metrics.wss_metric.updated) {
+        c->first = metrics.wss_metric.wss;
+        c->second = metrics.wss_metric.tmp;
       }
       break;
     default:
@@ -311,6 +321,7 @@ void MetricAggregator::handle_mds_metrics(const cref_t<MMDSMetrics> &m) {
   auto rank = metrics_message.rank;
   auto &client_metrics_map = metrics_message.client_metrics_map;
 
+  dout(0) << "eunjae handle_mds_metrics" << dendl;
   dout(20) << ": applying " << client_metrics_map.size() << " updates for rank="
            << rank << " with sequence number " << seq << dendl;
 

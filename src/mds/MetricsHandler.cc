@@ -30,6 +30,7 @@ void MetricsHandler::ms_fast_dispatch2(const ref_t<Message> &m) {
 }
 
 bool MetricsHandler::ms_dispatch2(const ref_t<Message> &m) {
+  dout(0) << "eunjae metric handler ms_dispatch2" << dendl;
   if (m->get_type() == CEPH_MSG_CLIENT_METRICS &&
       m->get_connection()->get_peer_type() == CEPH_ENTITY_TYPE_CLIENT) {
     handle_client_metrics(ref_cast<MClientMetrics>(m));
@@ -129,6 +130,7 @@ void MetricsHandler::remove_session(Session *session) {
   metrics.opened_inodes_metric = { };
   metrics.read_io_sizes_metric = { };
   metrics.write_io_sizes_metric = { };
+  metrics.wss_metric = { };
   metrics.update_type = UPDATE_TYPE_REMOVE;
 }
 
@@ -165,6 +167,10 @@ void MetricsHandler::handle_payload(Session *session, const CapInfoPayload &payl
 }
 
 void MetricsHandler::handle_payload(Session *session, const ReadLatencyPayload &payload) {
+  dout(0) << "eunjae : type=" << payload.get_type()
+           << ", session=" << session << ", latency=" << payload.lat
+           << ", avg=" << payload.mean << ", sq_sum=" << payload.sq_sum
+           << ", count=" << payload.count << dendl;
   dout(20) << ": type=" << payload.get_type()
            << ", session=" << session << ", latency=" << payload.lat
            << ", avg=" << payload.mean << ", sq_sum=" << payload.sq_sum
@@ -182,9 +188,14 @@ void MetricsHandler::handle_payload(Session *session, const ReadLatencyPayload &
   metrics.read_latency_metric.sq_sum = payload.sq_sum;
   metrics.read_latency_metric.count = payload.count;
   metrics.read_latency_metric.updated = true;
+  dout(0) << "eunjae read handle_payload3 " << metrics.read_latency_metric << dendl;
 }
 
 void MetricsHandler::handle_payload(Session *session, const WriteLatencyPayload &payload) {
+  dout(0) << "eunjae : type=" << payload.get_type()
+           << ", session=" << session << ", latency=" << payload.lat
+           << ", avg=" << payload.mean << ", sq_sum=" << payload.sq_sum
+           << ", count=" << payload.count << dendl;
   dout(20) << ": type=" << payload.get_type()
            << ", session=" << session << ", latency=" << payload.lat
            << ", avg=" << payload.mean << ", sq_sum=" << payload.sq_sum
@@ -202,6 +213,7 @@ void MetricsHandler::handle_payload(Session *session, const WriteLatencyPayload 
   metrics.write_latency_metric.sq_sum = payload.sq_sum;
   metrics.write_latency_metric.count = payload.count;
   metrics.write_latency_metric.updated = true;
+  dout(0) << "eunjae write handle_payload3 " << metrics.write_latency_metric << dendl;
 }
 
 void MetricsHandler::handle_payload(Session *session, const MetadataLatencyPayload &payload) {
@@ -326,6 +338,23 @@ void MetricsHandler::handle_payload(Session *session, const WriteIoSizesPayload 
   metrics.write_io_sizes_metric.updated = true;
 }
 
+void MetricsHandler::handle_payload(Session *session, const WssPayload &payload) {
+  dout(0) << "eunjae " << payload.get_type()
+           << ", session=" << session << ", wss=" << payload.wss << dendl;
+
+  auto it = client_metrics_map.find(session->info.inst);
+  if (it == client_metrics_map.end()) {
+    return;
+  }
+  dout(0) << "eunjae wss handle_payload2 " << payload.wss << " " << payload.tmp <<dendl;
+  auto &metrics = it->second.second;
+  metrics.update_type = UPDATE_TYPE_REFRESH;
+  metrics.wss_metric.wss = payload.wss;
+  metrics.wss_metric.tmp = payload.tmp;
+  metrics.wss_metric.updated = true;
+  dout(0) << "eunjae wss handle_payload3 " << metrics << " " << metrics.wss_metric.wss << dendl;
+}
+
 void MetricsHandler::handle_payload(Session *session, const UnknownPayload &payload) {
   dout(5) << ": type=Unknown, session=" << session << ", ignoring unknown payload" << dendl;
 }
@@ -341,9 +370,27 @@ void MetricsHandler::handle_client_metrics(const cref_t<MClientMetrics> &m) {
     return;
   }
 
+  dout(0) << "eunjae handle_client_metrics: session=" << session << dendl;
+
   for (auto &metric : m->updates) {
+    dout(0) << "eunjae type: " << typeid(metric).name() << dendl;
     boost::apply_visitor(HandlePayloadVisitor(this, session), metric.payload);
   }
+
+  const auto& metadata = session->info.client_metadata;
+  auto metadata_it = metadata.find("root");
+  if(metadata_it != metadata.end()) {
+    auto root = metadata_it->second;
+    dout(0) << "root: " << root << dendl;
+
+    auto wss_map_it = wss_map->find(root);
+    if(wss_map_it != wss_map->end()){
+      auto wss = wss_map_it->second;
+      const WssPayload wss_payload(wss, 0);
+      handle_payload(session, wss_payload);
+    }
+  }
+
 }
 
 void MetricsHandler::handle_mds_ping(const cref_t<MMDSPing> &m) {

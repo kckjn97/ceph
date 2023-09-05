@@ -286,6 +286,30 @@ struct WriteIoSizesMetric {
   }
 };
 
+struct WssMetric {
+  uint64_t wss = 0;
+  uint64_t tmp = 0;
+  bool updated = false;
+
+  DENC(WssMetric, v, p) {
+    DENC_START(1, 1, p);
+    denc(v.wss, p);
+    denc(v.tmp, p);
+    denc(v.updated, p);
+    DENC_FINISH(p);
+  }
+
+  void dump(Formatter *f) const {
+    f->dump_unsigned("wss", wss);
+    f->dump_unsigned("tmp", tmp);
+  }
+
+  friend std::ostream& operator<<(std::ostream& os, const WssMetric &metric) {
+    os << "{wss=" << metric.wss << ", tmp=" << metric.tmp <<"}";
+    return os;
+  }
+};
+
 WRITE_CLASS_DENC(CapHitMetric)
 WRITE_CLASS_DENC(ReadLatencyMetric)
 WRITE_CLASS_DENC(WriteLatencyMetric)
@@ -296,6 +320,7 @@ WRITE_CLASS_DENC(PinnedIcapsMetric)
 WRITE_CLASS_DENC(OpenedInodesMetric)
 WRITE_CLASS_DENC(ReadIoSizesMetric)
 WRITE_CLASS_DENC(WriteIoSizesMetric)
+WRITE_CLASS_DENC(WssMetric)
 
 // metrics that are forwarded to the MDS by client(s).
 struct Metrics {
@@ -310,6 +335,7 @@ struct Metrics {
   OpenedInodesMetric opened_inodes_metric;
   ReadIoSizesMetric read_io_sizes_metric;
   WriteIoSizesMetric write_io_sizes_metric;
+  WssMetric wss_metric;
 
   // metric update type
   uint32_t update_type = UpdateType::UPDATE_TYPE_REFRESH;
@@ -332,6 +358,7 @@ struct Metrics {
     if (struct_v >= 4) {
       denc(v.read_io_sizes_metric, p);
       denc(v.write_io_sizes_metric, p);
+      denc(v.wss_metric, p);
     }
     DENC_FINISH(p);
   }
@@ -348,6 +375,7 @@ struct Metrics {
     f->dump_object("opened_inodes_metric", opened_inodes_metric);
     f->dump_object("read_io_sizes_metric", read_io_sizes_metric);
     f->dump_object("write_io_sizes_metric", write_io_sizes_metric);
+    f->dump_object("wss_metric", wss_metric);
   }
 
   friend std::ostream& operator<<(std::ostream& os, const Metrics& metrics) {
@@ -362,6 +390,7 @@ struct Metrics {
        << ", opened_inodes_metric=" << metrics.opened_inodes_metric
        << ", read_io_sizes_metric=" << metrics.read_io_sizes_metric
        << ", write_io_sizes_metric=" << metrics.write_io_sizes_metric
+       << ", wss_metric=" << metrics.wss_metric
        << "}]";
     return os;
   }

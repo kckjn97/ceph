@@ -33,6 +33,7 @@ enum ClientMetricType {
   CLIENT_METRIC_TYPE_STDEV_WRITE_LATENCY,
   CLIENT_METRIC_TYPE_AVG_METADATA_LATENCY,
   CLIENT_METRIC_TYPE_STDEV_METADATA_LATENCY,
+  CLIENT_METRIC_TYPE_WSS,
 };
 inline std::ostream &operator<<(std::ostream &os, const ClientMetricType &type) {
   switch(type) {
@@ -83,6 +84,9 @@ inline std::ostream &operator<<(std::ostream &os, const ClientMetricType &type) 
     break;
   case ClientMetricType::CLIENT_METRIC_TYPE_STDEV_METADATA_LATENCY:
     os << "STDEV_METADATA_LATENCY";
+    break;
+  case ClientMetricType::CLIENT_METRIC_TYPE_WSS:
+    os << "WSS";
     break;
   default:
     os << "(UNKNOWN:" << static_cast<std::underlying_type<ClientMetricType>::type>(type) << ")";
@@ -529,6 +533,44 @@ struct WriteIoSizesPayload : public ClientMetricPayloadBase {
   }
 };
 
+
+struct WssPayload : public ClientMetricPayloadBase {
+    uint64_t wss = 71;
+    uint64_t tmp = 2;
+
+    WssPayload()
+            : ClientMetricPayloadBase(ClientMetricType::CLIENT_METRIC_TYPE_WSS) { }
+    WssPayload(uint64_t wss, uint64_t tmp)
+            : ClientMetricPayloadBase(ClientMetricType::CLIENT_METRIC_TYPE_WSS),
+              wss(wss), tmp(tmp) {
+    }
+
+    void encode(bufferlist &bl) const {
+      using ceph::encode;
+      ENCODE_START(1, 1, bl);
+      encode(wss, bl);
+      encode(tmp, bl);
+      ENCODE_FINISH(bl);
+    }
+
+    void decode(bufferlist::const_iterator &iter) {
+      using ceph::decode;
+      DECODE_START(1, iter);
+      decode(wss, iter);
+      decode(tmp, iter);
+      DECODE_FINISH(iter);
+    }
+
+    void dump(Formatter *f) const {
+      f->dump_int("wss", wss);
+      f->dump_int("tmp", tmp);
+    }
+
+    void print(std::ostream *out) const {
+      *out << "wss: " << wss << " tmp: " << tmp;
+    }
+};
+
 struct UnknownPayload : public ClientMetricPayloadBase {
   UnknownPayload()
     : ClientMetricPayloadBase(static_cast<ClientMetricType>(-1)) { }
@@ -562,6 +604,7 @@ typedef boost::variant<CapInfoPayload,
                        OpenedInodesPayload,
                        ReadIoSizesPayload,
                        WriteIoSizesPayload,
+                       WssPayload,
                        UnknownPayload> ClientMetricPayload;
 
 // metric update message sent by clients
@@ -675,6 +718,9 @@ public:
       break;
     case ClientMetricType::CLIENT_METRIC_TYPE_WRITE_IO_SIZES:
       payload = WriteIoSizesPayload();
+      break;
+    case ClientMetricType::CLIENT_METRIC_TYPE_WSS:
+      payload = WssPayload();
       break;
     default:
       payload = UnknownPayload(static_cast<ClientMetricType>(metric_type));

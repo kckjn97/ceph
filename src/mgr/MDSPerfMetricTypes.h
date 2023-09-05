@@ -132,6 +132,7 @@ enum class MDSPerformanceCounterType : uint8_t {
   STDEV_WRITE_LATENCY_METRIC = 13,
   AVG_METADATA_LATENCY_METRIC = 14,
   STDEV_METADATA_LATENCY_METRIC = 15,
+  WSS_METRIC = 16,
 };
 
 struct MDSPerformanceCounterDescriptor {
@@ -155,6 +156,7 @@ struct MDSPerformanceCounterDescriptor {
     case MDSPerformanceCounterType::STDEV_WRITE_LATENCY_METRIC:
     case MDSPerformanceCounterType::AVG_METADATA_LATENCY_METRIC:
     case MDSPerformanceCounterType::STDEV_METADATA_LATENCY_METRIC:
+    case MDSPerformanceCounterType::WSS_METRIC:
       return true;
     default:
       return false;

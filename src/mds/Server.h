@@ -18,6 +18,8 @@
 #include <string_view>
 
 #include <common/DecayCounter.h>
+#include <bitset>
+#include <functional>
 
 #include "include/common_fwd.h"
 
@@ -85,8 +87,34 @@ enum {
   l_mdss_last,
 };
 
+class BloomFilter {
+private:
+    std::bitset<1000000> bitArray;
+
+public:
+    void add(unsigned int element) {
+      // 해시 함수를 사용하여 요소의 비트 위치 계산
+      size_t hash1 = std::hash<unsigned int>{}(element);
+      size_t hash2 = std::hash<unsigned int>{}(element + 123);
+
+      bitArray[hash1 % bitArray.size()] = true;
+      bitArray[hash2 % bitArray.size()] = true;
+    }
+
+    bool contains(int element) {
+      size_t hash1 = std::hash<unsigned int>{}(element);
+      size_t hash2 = std::hash<unsigned int>{}(element + 123);
+
+      return bitArray[hash1 % bitArray.size()] && bitArray[hash2 % bitArray.size()];
+    }
+};
+
 class Server {
 public:
+  std::map<std::string, BloomFilter*> wss_bf_map;
+  std::map<std::string, unsigned int> wss_map;
+
+  inodeno_t tmp_wcc;
   using clock = ceph::coarse_mono_clock;
   using time = ceph::coarse_mono_time;
 
