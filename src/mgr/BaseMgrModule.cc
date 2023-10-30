@@ -1110,8 +1110,10 @@ ceph_add_mds_perf_query(BaseMgrModule *self, PyObject *args)
     {"stdev_write_latency", MDSPerformanceCounterType::STDEV_WRITE_LATENCY_METRIC},
     {"avg_metadata_latency", MDSPerformanceCounterType::AVG_METADATA_LATENCY_METRIC},
     {"stdev_metadata_latency", MDSPerformanceCounterType::STDEV_METADATA_LATENCY_METRIC},
+    {"wss", MDSPerformanceCounterType::WSS_METRIC},
   };
 
+  dout(0) << "eunjae ceph_add_mds_perf_query" << dendl;
   PyObject *py_query = nullptr;
   if (!PyArg_ParseTuple(args, "O:ceph_add_mds_perf_query", &py_query)) {
     derr << "Invalid args!" << dendl;

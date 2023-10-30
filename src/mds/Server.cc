@@ -2612,6 +2612,64 @@ void Server::dispatch_client_request(MDRequestRef& mdr)
   // we shouldn't be waiting on anyone.
   ceph_assert(!mdr->has_more() || mdr->more()->waiting_on_peer.empty());
 
+  const filepath& refpath = mdr->get_filepath();
+  inodeno_t ino = refpath.get_ino();
+  client_t cliebnt = mdr->get_client();
+
+  tmp_wcc = ino;
+  dout(0) << "dispatch_client_request:" << *mdr  << dendl;
+  dout(0) << "refpath:" << refpath  << dendl;
+  dout(0) << "ino:" << ino  << dendl;
+  dout(0) << "client:" << client  << dendl;
+
+  Session* session = mdr->session;
+  dout(0) << "session:" << session << dendl;
+
+  const auto& metadata = session->info.client_metadata;
+
+  dout(0) << "client map:" << dendl;
+  for (auto it = metadata.begin(); it != metadata.end(); it++ ) {
+    dout(0) << "-" << it->first << " : " << it->second << dendl;
+  }
+
+  auto metadata_it = metadata.find("root");
+  if(metadata_it != metadata.end()) {
+    auto root = metadata_it->second;
+    dout(0) << "root: " << root << dendl;
+
+    int count = std::count(root.begin(), root.end(), '/');
+
+    std::string subvolume = "";
+    if (count >= 2) {
+      std::istringstream tokenStream(root);
+      std::string token;
+      std::getline(tokenStream, token, '/');
+      std::getline(tokenStream, token, '/');
+      std::getline(tokenStream, token, '/');
+      std::getline(tokenStream, token, '/');
+      std::getline(tokenStream, token, '/');
+
+	    subvolume = token;
+
+    	dout(0) << "subvolume: " << subvolume << dendl;
+
+    	auto wss_bf_map_it = wss_bf_map.find(subvolume);
+    	if(wss_bf_map_it == wss_bf_map.end()){
+    	  wss_map[subvolume] = 0;
+    	  auto bf = new BloomFilter();
+    	  bf->add(ino);
+    	  wss_bf_map[subvolume] = bf;
+    	}else {
+    	  if(wss_map.find(subvolume) != wss_map.end())
+    	    wss_map[subvolume] += 1;
+
+    	  auto bf = wss_bf_map_it->second;
+    	  bf->add(ino);
+    	}
+    }
+  }
+  metrics_handler->set_wss_map(&wss_map);
+
   if (mdr->killed) {
     dout(10) << "request " << *mdr << " was killed" << dendl;
     //if the mdr is a "batch_op" and it has followers, pick a follower as

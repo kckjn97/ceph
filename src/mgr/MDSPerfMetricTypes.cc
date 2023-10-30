@@ -41,6 +41,7 @@ void MDSPerformanceCounterDescriptor::pack_counter(
   case MDSPerformanceCounterType::STDEV_WRITE_LATENCY_METRIC:
   case MDSPerformanceCounterType::AVG_METADATA_LATENCY_METRIC:
   case MDSPerformanceCounterType::STDEV_METADATA_LATENCY_METRIC:
+  case MDSPerformanceCounterType::WSS_METRIC:
     break;
   default:
     ceph_abort_msg("unknown counter type");
@@ -69,6 +70,7 @@ void MDSPerformanceCounterDescriptor::unpack_counter(
   case MDSPerformanceCounterType::STDEV_WRITE_LATENCY_METRIC:
   case MDSPerformanceCounterType::AVG_METADATA_LATENCY_METRIC:
   case MDSPerformanceCounterType::STDEV_METADATA_LATENCY_METRIC:
+  case MDSPerformanceCounterType::WSS_METRIC:
     break;
   default:
     ceph_abort_msg("unknown counter type");
@@ -124,6 +126,9 @@ std::ostream& operator<<(std::ostream &os, const MDSPerformanceCounterDescriptor
      break;
    case MDSPerformanceCounterType::STDEV_METADATA_LATENCY_METRIC:
      os << "stdev_metadata_latency";
+     break;
+   case MDSPerformanceCounterType::WSS_METRIC:
+     os << "wss";
      break;
    }
 

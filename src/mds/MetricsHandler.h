@@ -100,7 +100,9 @@ private:
   void handle_payload(Session *session, const OpenedInodesPayload &payload);
   void handle_payload(Session *session, const ReadIoSizesPayload &payload);
   void handle_payload(Session *session, const WriteIoSizesPayload &payload);
+  void handle_payload(Session *session, const WssPayload &payload);
   void handle_payload(Session *session, const UnknownPayload &payload);
+
 
   void set_next_seq(version_t seq);
   void reset_seq();
@@ -109,6 +111,12 @@ private:
   void handle_mds_ping(const cref_t<MMDSPing> &m);
 
   void update_rank0();
+
+  std::map<std::string, unsigned int> *wss_map;
+public:
+  void set_wss_map(std::map<std::string, unsigned int> *_wss_map) {
+    wss_map = _wss_map;
+  }
 };
 
 #endif // CEPH_MDS_METRICS_HANDLER_H

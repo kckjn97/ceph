@@ -204,6 +204,12 @@ void MetricAggregator::refresh_metrics_for_rank(const entity_inst_t &client,
         c->second = metrics.metadata_latency_metric.count;
       }
       break;
+    case MDSPerformanceCounterType::WSS_METRIC:
+      if (metrics.wss_metric.updated) {
+        c->first = metrics.wss_metric.wss;
+        c->second = metrics.wss_metric.tmp;
+      }
+      break;
     default:
       ceph_abort_msg("unknown counter type");
     }

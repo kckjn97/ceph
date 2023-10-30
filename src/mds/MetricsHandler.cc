@@ -129,6 +129,7 @@ void MetricsHandler::remove_session(Session *session) {
   metrics.opened_inodes_metric = { };
   metrics.read_io_sizes_metric = { };
   metrics.write_io_sizes_metric = { };
+  metrics.wss_metric = { };
   metrics.update_type = UPDATE_TYPE_REMOVE;
 }
 
@@ -326,6 +327,19 @@ void MetricsHandler::handle_payload(Session *session, const WriteIoSizesPayload 
   metrics.write_io_sizes_metric.updated = true;
 }
 
+void MetricsHandler::handle_payload(Session *session, const WssPayload &payload) {
+  auto it = client_metrics_map.find(session->info.inst);
+  if (it == client_metrics_map.end()) {
+    return;
+  }
+
+  auto &metrics = it->second.second;
+  metrics.update_type = UPDATE_TYPE_REFRESH;
+  metrics.wss_metric.wss = payload.wss;
+  metrics.wss_metric.tmp = payload.tmp;
+  metrics.wss_metric.updated = true;
+}
+
 void MetricsHandler::handle_payload(Session *session, const UnknownPayload &payload) {
   dout(5) << ": type=Unknown, session=" << session << ", ignoring unknown payload" << dendl;
 }
@@ -344,6 +358,21 @@ void MetricsHandler::handle_client_metrics(const cref_t<MClientMetrics> &m) {
   for (auto &metric : m->updates) {
     boost::apply_visitor(HandlePayloadVisitor(this, session), metric.payload);
   }
+
+  const auto& metadata = session->info.client_metadata;
+  auto metadata_it = metadata.find("root");
+  if(metadata_it != metadata.end()) {
+    auto root = metadata_it->second;
+    dout(0) << "root: " << root << dendl;
+
+    auto wss_map_it = wss_map->find(root);
+    if(wss_map_it != wss_map->end()){
+      auto wss = wss_map_it->second;
+      const WssPayload wss_payload(wss, 0);
+      handle_payload(session, wss_payload);
+    }
+  }
+
 }
 
 void MetricsHandler::handle_mds_ping(const cref_t<MMDSPing> &m) {
