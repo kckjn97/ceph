@@ -363,13 +363,29 @@ void MetricsHandler::handle_client_metrics(const cref_t<MClientMetrics> &m) {
   auto metadata_it = metadata.find("root");
   if(metadata_it != metadata.end()) {
     auto root = metadata_it->second;
-    dout(0) << "root: " << root << dendl;
+//    dout(0) << "root: " << root << dendl;
 
-    auto wss_map_it = wss_map->find(root);
-    if(wss_map_it != wss_map->end()){
-      auto wss = wss_map_it->second;
-      const WssPayload wss_payload(wss, 0);
-      handle_payload(session, wss_payload);
+    int count = std::count(root.begin(), root.end(), '/');
+
+//    dout(0) << "eunjae: root count " << count << dendl;
+    std::string subvolume = "";
+    if (count >= 2) {
+      std::istringstream tokenStream(root);
+      std::string token;
+      std::getline(tokenStream, token, '/');
+      std::getline(tokenStream, token, '/');
+      std::getline(tokenStream, token, '/');
+      std::getline(tokenStream, token, '/');
+      std::getline(tokenStream, token, '/');
+
+      subvolume = token;
+
+      auto wss_map_it = wss_map->find(subvolume);
+      if (wss_map_it != wss_map->end()) {
+        auto wss = wss_map_it->second;
+        const WssPayload wss_payload(wss, 0);
+        handle_payload(session, wss_payload);
+      }
     }
   }
 

@@ -89,21 +89,23 @@ enum {
 
 class BloomFilter {
 private:
-    std::bitset<1000000> bitArray;
+    std::bitset<10000000> bitArray;
+    std::string seed1 = "IcY00azl";
+    std::string seed2 = "9iUi+OQ7";
 
 public:
-    void add(unsigned int element) {
+    void add(std::string element) {
       // 해시 함수를 사용하여 요소의 비트 위치 계산
-      size_t hash1 = std::hash<unsigned int>{}(element);
-      size_t hash2 = std::hash<unsigned int>{}(element + 123);
+      size_t hash1 = std::hash<std::string>{}(element + seed1);
+      size_t hash2 = std::hash<std::string>{}(element + seed2);
 
       bitArray[hash1 % bitArray.size()] = true;
       bitArray[hash2 % bitArray.size()] = true;
     }
 
-    bool contains(int element) {
-      size_t hash1 = std::hash<unsigned int>{}(element);
-      size_t hash2 = std::hash<unsigned int>{}(element + 123);
+    bool contains(std::string element) {
+      size_t hash1 = std::hash<std::string>{}(element + seed1);
+      size_t hash2 = std::hash<std::string>{}(element + seed2);
 
       return bitArray[hash1 % bitArray.size()] && bitArray[hash2 % bitArray.size()];
     }
@@ -111,7 +113,7 @@ public:
 
 class Server {
 public:
-  std::map<std::string, BloomFilter*> wss_bf_map;
+  BloomFilter wss_bf[2];
   std::map<std::string, unsigned int> wss_map;
 
   inodeno_t tmp_wcc;

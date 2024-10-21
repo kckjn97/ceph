@@ -2614,11 +2614,13 @@ void Server::dispatch_client_request(MDRequestRef& mdr)
 
   const filepath& refpath = mdr->get_filepath();
   inodeno_t ino = refpath.get_ino();
-  client_t cliebnt = mdr->get_client();
+  client_t client = mdr->get_client();
+  std::string path = refpath.get_path();
 
   tmp_wcc = ino;
   dout(0) << "dispatch_client_request:" << *mdr  << dendl;
   dout(0) << "refpath:" << refpath  << dendl;
+  dout(0) << "path:" << path  << dendl;
   dout(0) << "ino:" << ino  << dendl;
   dout(0) << "client:" << client  << dendl;
 
@@ -2639,6 +2641,7 @@ void Server::dispatch_client_request(MDRequestRef& mdr)
 
     int count = std::count(root.begin(), root.end(), '/');
 
+    dout(0) << "eunjae: root count " << count << dendl;
     std::string subvolume = "";
     if (count >= 2) {
       std::istringstream tokenStream(root);
@@ -2650,22 +2653,17 @@ void Server::dispatch_client_request(MDRequestRef& mdr)
       std::getline(tokenStream, token, '/');
 
 	    subvolume = token;
-
     	dout(0) << "subvolume: " << subvolume << dendl;
-
-    	auto wss_bf_map_it = wss_bf_map.find(subvolume);
-    	if(wss_bf_map_it == wss_bf_map.end()){
-    	  wss_map[subvolume] = 0;
-    	  auto bf = new BloomFilter();
-    	  bf->add(ino);
-    	  wss_bf_map[subvolume] = bf;
-    	}else {
-    	  if(wss_map.find(subvolume) != wss_map.end())
-    	    wss_map[subvolume] += 1;
-
-    	  auto bf = wss_bf_map_it->second;
-    	  bf->add(ino);
-    	}
+      if(wss_map.find(subvolume) == wss_map.end())
+        wss_map[subvolume] = 0;
+      std::string key = subvolume + ":" + std::to_string(ino);
+      if(!wss_bf[0].contains(key)) {
+        wss_bf[0].add(key);
+        wss_map[subvolume] += 1;
+        dout(0) << "eunjae: bf add " << key << ", " <<  wss_map[subvolume] << dendl;
+      } else {
+        dout(0) << "eunjae: bf skip " << key << dendl;
+      }
     }
   }
   metrics_handler->set_wss_map(&wss_map);
@@ -3476,7 +3474,8 @@ CInode* Server::prepare_new_inode(MDRequestRef& mdr, CDir *dir, inodeno_t useino
 {
   CInode *in = new CInode(mdcache);
   auto _inode = in->_get_inode();
-  
+
+  dout(0 )<< "eunjae: prepare_new_indoe" << dendl;
   // Server::prepare_force_open_sessions() can re-open session in closing
   // state. In that corner case, session's prealloc_inos are being freed.
   // To simplify the code, we disallow using/refilling session's prealloc_ino
@@ -4761,6 +4760,7 @@ void Server::handle_client_openc(MDRequestRef& mdr)
   if (mdr->dn[0].size() == 1)
     mds->locker->create_lock_cache(mdr, diri, &mdr->dir_layout);
 
+  dout(0) << "eunjae: handle_client_openc" << dendl;
   // create inode.
   CInode *newi = prepare_new_inode(mdr, dn->get_dir(), inodeno_t(req->head.ino),
 				   req->head.args.open.mode | S_IFREG, &layout);
@@ -7117,6 +7117,7 @@ void Server::handle_client_mknod(MDRequestRef& mdr)
   else
     layout = mdcache->default_file_layout;
 
+    dout(0 )<< "eunjae: handle_client_mknod" << dendl;
   CInode *newi = prepare_new_inode(mdr, dn->get_dir(), inodeno_t(req->head.ino), mode, &layout);
   ceph_assert(newi);
 
@@ -7219,6 +7220,8 @@ void Server::handle_client_mkdir(MDRequestRef& mdr)
   unsigned mode = req->head.args.mkdir.mode;
   mode &= ~S_IFMT;
   mode |= S_IFDIR;
+    dout(0 )<< "eunjae: handle_client_mkdir" << dendl;
+
   CInode *newi = prepare_new_inode(mdr, dir, inodeno_t(req->head.ino), mode);
   ceph_assert(newi);
 
@@ -7312,6 +7315,7 @@ void Server::handle_client_symlink(MDRequestRef& mdr)
   dn->set_alternate_name(req->get_alternate_name());
 
   unsigned mode = S_IFLNK | 0777;
+
   CInode *newi = prepare_new_inode(mdr, dir, inodeno_t(req->head.ino), mode);
   ceph_assert(newi);
 
